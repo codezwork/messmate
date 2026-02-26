@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MessMate | Owner Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="manifest" href="manifest.json" />
+  </head>
+  <body class="bg-white text-slate-800 antialiased min-h-screen flex flex-col">
+    <nav class="bg-white border-b border-orange-100 sticky top-0 z-50 shadow-sm p-4">
+      <div class="max-w-7xl mx-auto flex justify-between items-center relative">
+        <div class="font-bold text-xl md:text-2xl">
+          Mess<span class="text-orange-500">Mate</span>
+        </div>
+        
+        <!-- Centered Mess Name -->
+        <div class="absolute left-1/2 transform -translate-x-1/2 font-bold text-slate-700 text-sm md:text-lg truncate max-w-[40%] text-center" id="header-canteen-name">
+            <!-- Loaded by Script -->
+        </div>
+
+        <div class="flex items-center gap-4">
+          <div class="text-right hidden sm:block">
+            <p id="user-display-name" class="text-sm font-bold">Loading...</p>
+            <p id="user-display-role" class="text-xs text-slate-500 uppercase">Owner</p>
+          </div>
+          
+           <!-- Settings Dropdown Container -->
+          <div class="relative">
+              <button onclick="toggleSettings()" class="text-xl p-2 hover:bg-slate-50 rounded-full transition-colors rotate-0 hover:rotate-90 duration-300">⚙️</button>
+              <!-- Dropdown -->
+              <div id="settings-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 py-2 z-50">
+                  <div class="px-4 py-2 border-b border-slate-50 sm:hidden">
+                       <p class="font-bold text-sm text-slate-800">Owner</p>
+                  </div>
+                  <button onclick="installApp()" id="install-btn-owner" class="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 font-medium border-b border-slate-50">Download App 📱</button>
+                  <button onclick="logout()" class="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 font-medium">Log Out 🚪</button>
+              </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <main id="dashboard-content" class="flex-grow max-w-7xl mx-auto p-4 md:p-8 w-full pb-24 md:pb-8">
+            <!-- TAB CONTENT WRAPPERS -->
+            
+            <!-- TAB: FEED (Default) -->
+            <!-- TAB: STATS (Default) -->
+            <div id="tab-owner-stats" class="mobile-tab-content block fade-in space-y-2 md:space-y-6">
+                 <div class="grid grid-cols-1 md:grid-cols-4 gap-2 md:gap-6">
+                    <!-- Desktop Action Buttons (Hidden on Mobile) -->
+                    <div class="hidden md:block bg-white p-6 rounded-xl shadow-sm border border-slate-100 cursor-pointer hover:bg-orange-50 transition-colors" onclick="startScanner()">
+                        <div class="flex items-center justify-between">
+                            <div><p class="text-sm font-medium text-slate-500">Action</p><h3 class="text-2xl font-bold text-orange-600 mt-1">Scan QR 📷</h3></div>
+                            <div class="bg-orange-100 p-3 rounded-full text-orange-600">→</div>
+                        </div>
+                    </div>
+                    <div class="hidden md:block bg-white p-6 rounded-xl shadow-sm border border-slate-100 cursor-pointer hover:bg-blue-50 transition-colors" onclick="openMenuModal()">
+                        <div class="flex items-center justify-between">
+                            <div><p class="text-sm font-medium text-slate-500">Management</p><h3 class="text-2xl font-bold text-blue-600 mt-1">Menu 📅</h3></div>
+                            <div class="bg-blue-100 p-3 rounded-full text-blue-600">→</div>
+                        </div>
+                    </div>
+
+                    <!-- Toggle Controls (Compact) -->
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-3 md:p-4 rounded-xl shadow-sm border border-slate-100 gap-3">
+                        <div>
+                            <h3 class="font-bold text-slate-700 text-base md:text-lg">📊 Statistics</h3>
+                            <p class="text-xs text-slate-400 font-medium mt-0.5" id="stats-current-date-display">--</p>
+                        </div>
+                        
+                        <div class="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg w-full md:w-auto">
+                            <!-- Hidden Date Input -->
+                            <input type="date" id="stats-date-picker" class="bg-white border text-sm rounded px-2 py-1 outline-none focus:ring-1 focus:ring-orange-200 text-slate-600 w-full md:w-auto cursor-pointer" onchange="onStatsDateChange(this.value)">
+                            
+                            <!-- Quick Buttons -->
+                            <div class="flex gap-1 shrink-0">
+                                <button onclick="setStatsDate('today')" id="btn-stats-today" class="px-3 py-1 text-xs md:text-sm font-bold rounded-md bg-white text-slate-800 shadow-sm transition-all border border-slate-200">Today</button>
+                                <button onclick="setStatsDate('tomorrow')" id="btn-stats-tmrw" class="px-3 py-1 text-xs md:text-sm font-bold rounded-md text-slate-500 hover:text-slate-700 transition-all">Tmw</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Expecting Card (Compact) -->
+                    <div class="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-100">
+                        <p class="text-xs md:text-sm font-medium text-slate-500 mb-2" id="label-expecting">Expecting Today</p>
+                        <div class="grid grid-cols-2 gap-2 divide-x divide-slate-100">
+                            <div class="text-center">
+                                <span class="text-[10px] md:text-xs font-bold text-slate-400 uppercase block mb-1">Lunch</span>
+                                <span class="text-2xl md:text-3xl font-bold text-slate-800" id="stat-expected-lunch">--</span>
+                            </div>
+                            <div class="text-center pl-2">
+                                <span class="text-[10px] md:text-xs font-bold text-slate-400 uppercase block mb-1">Dinner</span>
+                                <span class="text-2xl md:text-3xl font-bold text-slate-800" id="stat-expected-dinner">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Counts Breakdown (Compact Grid, No Off) -->
+                 <div class="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-100">
+                    <h3 class="font-bold text-slate-700 mb-2 text-sm md:text-base" id="label-preferences">🍽️ Meal Preferences</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-4">
+                        <!-- VEG -->
+                        <div class="p-3 bg-green-50 rounded-lg border border-green-100">
+                            <div class="flex justify-between items-center mb-2"><span class="text-[10px] md:text-xs text-green-700 font-bold uppercase">Veg</span> <span class="text-sm">🥬</span></div>
+                            <div class="flex items-center justify-between text-xs md:text-sm text-green-800 bg-white/50 rounded p-1.5">
+                                <div class="flex flex-col items-center w-1/2 border-r border-green-200">
+                                    <span class="text-[8px] md:text-[10px] font-bold uppercase text-green-600">Lunch</span>
+                                    <span class="font-bold text-base md:text-lg" id="count-veg-l">0</span>
+                                </div>
+                                <div class="flex flex-col items-center w-1/2">
+                                    <span class="text-[8px] md:text-[10px] font-bold uppercase text-green-600">Dinner</span>
+                                    <span class="font-bold text-base md:text-lg" id="count-veg-d">0</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- NON-VEG -->
+                        <div class="p-3 bg-red-50 rounded-lg border border-red-100">
+                             <div class="flex justify-between items-center mb-2"><span class="text-[10px] md:text-xs text-red-700 font-bold uppercase">Non-Veg</span> <span class="text-sm">🍗</span></div>
+                            <div class="flex items-center justify-between text-xs md:text-sm text-red-800 bg-white/50 rounded p-1.5">
+                                <div class="flex flex-col items-center w-1/2 border-r border-red-200">
+                                    <span class="text-[8px] md:text-[10px] font-bold uppercase text-red-600">Lunch</span>
+                                    <span class="font-bold text-base md:text-lg" id="count-nonveg-l">0</span>
+                                </div>
+                                <div class="flex flex-col items-center w-1/2">
+                                    <span class="text-[8px] md:text-[10px] font-bold uppercase text-red-600">Dinner</span>
+                                    <span class="font-bold text-base md:text-lg" id="count-nonveg-d">0</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- FAST -->
+                        <div class="p-3 bg-yellow-50 rounded-lg border border-yellow-100">
+                             <div class="flex justify-between items-center mb-2"><span class="text-[10px] md:text-xs text-yellow-700 font-bold uppercase">Fasting</span> <span class="text-sm">🍌</span></div>
+                            <div class="flex items-center justify-between text-xs md:text-sm text-yellow-800 bg-white/50 rounded p-1.5">
+                                <div class="flex flex-col items-center w-1/2 border-r border-yellow-200">
+                                    <span class="text-[8px] md:text-[10px] font-bold uppercase text-yellow-600">Lunch</span>
+                                    <span class="font-bold text-base md:text-lg" id="count-fast-l">0</span>
+                                </div>
+                                <div class="flex flex-col items-center w-1/2">
+                                    <span class="text-[8px] md:text-[10px] font-bold uppercase text-yellow-600">Dinner</span>
+                                    <span class="font-bold text-base md:text-lg" id="count-fast-d">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                 </div>
+
+                 <!-- On Leave Card (Updated to Split L/D) -->
+                 <div class="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-100 space-y-2">
+                    <div class="flex justify-between items-center">
+                         <p class="text-xs md:text-sm font-medium text-slate-500" id="label-leave-title">On Leave</p>
+                    </div>
+                    <!-- Detailed Leave Split -->
+                    <div class="grid grid-cols-2 gap-2 divide-x divide-slate-100">
+                        <div class="text-center">
+                            <span class="text-[10px] md:text-xs font-bold text-slate-400 uppercase block">Lunch</span>
+                            <span class="text-xl md:text-2xl font-bold text-slate-400" id="count-off-l">0</span>
+                        </div>
+                        <div class="text-center pl-2">
+                            <span class="text-[10px] md:text-xs font-bold text-slate-400 uppercase block">Dinner</span>
+                            <span class="text-xl md:text-2xl font-bold text-slate-400" id="count-off-d">0</span>
+                        </div>
+                    </div>
+                    <!-- Total Fallback Hidden or Small -->
+                    <p class="text-[10px] text-center text-slate-300 mt-1 hidden" id="stat-leave">Total: --</p>
+                 </div>
+            </div>
+
+            <!-- TAB: LIVE FEED (New Separate Tab for Mobile) -->
+            <div id="tab-owner-feed" class="mobile-tab-content hidden md:block bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden space-y-0">
+                 <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                        <h3 class="font-bold text-slate-700">🔴 Live Activity Feed</h3>
+                        <button onclick="loadLiveFeed()" class="text-xs text-blue-500 hover:text-blue-700">Refresh ⟳</button>
+                 </div>
+                 <div id="live-feed-container" class="h-[calc(100vh-200px)] md:h-96 overflow-y-auto p-4 space-y-2">
+                        <p class="text-center text-slate-400 text-sm">Loading recent scans...</p>
+                 </div>
+            </div>
+
+            <!-- TAB: MENU (Full Page) -->
+            <div id="tab-owner-menu" class="mobile-tab-content hidden fade-in space-y-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-2xl text-slate-800">Menu Management</h3>
+                    <!-- Weekly Pattern Removed -->
+                </div>
+
+                <!-- Unified Menu View -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 mb-6">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+                        <div class="flex items-center gap-4">
+                            <!-- Toggle Button -->
+                            <div class="bg-slate-100 p-1 rounded-lg flex">
+                                <button onclick="setMenuView('week')" id="btn-view-week" class="px-4 py-2 text-sm font-bold rounded-md bg-white text-slate-800 shadow-sm transition-all">This Week</button>
+                                <button onclick="setMenuView('month')" id="btn-view-month" class="px-4 py-2 text-sm font-bold rounded-md text-slate-500 hover:text-slate-700 transition-all">Monthly</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Range / Navigation -->
+                        <div class="flex items-center gap-3">
+                             <button onclick="changeMenuRange(-1)" class="p-2 hover:bg-slate-50 rounded-full text-slate-500">◀️</button>
+                             <span class="text-sm font-bold text-slate-700 min-w-[120px] text-center" id="menu-range-label">Loading...</span>
+                             <button onclick="changeMenuRange(1)" class="p-2 hover:bg-slate-50 rounded-full text-slate-500">▶️</button>
+                        </div>
+                    </div>
+
+                    <!-- Scrollable Container (Max height for month view mainly) -->
+                    <div id="menu-view-scroll-container" class="overflow-x-auto overflow-y-auto transition-all duration-300">
+                        <div id="weekly-menu-container" class="pb-2">
+                             <!-- Table injected here -->
+                             <p class="text-center text-slate-400 py-4">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Removed Separate Calendar Grid -->
+
+                <!-- Quick Edit Popover (Hidden by default) -->
+                <div id="quick-edit-popover" class="hidden absolute bg-white p-3 rounded-xl shadow-xl border border-slate-100 z-50 w-48 animate-in fade-in zoom-in duration-100">
+                    <h5 class="text-xs font-bold text-slate-500 mb-2 uppercase" id="quick-edit-title">Edit Lunch</h5>
+                    <div class="space-y-2">
+                        <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                            <input type="checkbox" id="qe-veg" class="rounded text-green-500 focus:ring-green-500 accent-green-500">
+                            <span class="text-sm text-slate-700 font-medium">Veg</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                            <input type="checkbox" id="qe-nonveg" class="rounded text-red-500 focus:ring-red-500 accent-red-500">
+                            <span class="text-sm text-slate-700 font-medium">Non-Veg</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                            <input type="checkbox" id="qe-fast" class="rounded text-yellow-500 focus:ring-yellow-500 accent-yellow-500">
+                            <span class="text-sm text-slate-700 font-medium">Fasting</span>
+                        </label>
+                         <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded border-t border-slate-100 pt-2 mt-1">
+                            <input type="checkbox" id="qe-off" class="rounded text-slate-500 focus:ring-slate-500 accent-slate-500">
+                            <span class="text-sm text-slate-700 font-medium">Off (Mess Closed)</span>
+                        </label>
+                    </div>
+                    <div class="mt-3 flex gap-2">
+                        <button onclick="saveQuickEdit()" class="flex-1 bg-orange-500 text-white text-xs py-1.5 rounded-lg font-bold hover:bg-orange-600">Save</button>
+                        <button onclick="closeQuickEdit()" class="flex-1 bg-slate-100 text-slate-600 text-xs py-1.5 rounded-lg font-medium hover:bg-slate-200">Cancel</button>
+                    </div>
+                </div>
+
+                <!-- Daily Menu Editor (Modal) -->
+                <div id="daily-editor-panel" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all">
+                    <div class="bg-white w-full max-w-sm md:max-w-md rounded-2xl shadow-2xl overflow-hidden transform transition-all scale-100">
+                        <!-- Modal Header -->
+                        <div class="flex justify-between items-center p-4 bg-slate-50 border-b border-slate-100">
+                            <div class="flex items-center gap-3">
+                               <div class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-xl">📅</div>
+                               <div>
+                                   <h3 class="font-bold text-slate-800 text-lg" id="editor-date-display">...</h3>
+                                   <p class="text-xs text-slate-500">Select available meal options</p>
+                               </div>
+                            </div>
+                            <button onclick="closeDailyEditor()" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-500 transition-colors">✕</button>
+                        </div>
+                        
+                        <input type="hidden" id="editor-date-val">
+
+                        <!-- Modal Body -->
+                        <div class="p-5 space-y-6 max-h-[70vh] overflow-y-auto">
+                            <!-- Lunch Section -->
+                            <div class="space-y-3">
+                                 <h4 class="font-bold text-slate-700 text-sm uppercase tracking-wide flex items-center gap-2">
+                                     <span class="text-lg">☀️</span> Lunch Options
+                                 </h4>
+                                 <div class="grid grid-cols-3 gap-3">
+                                     <div onclick="toggleMenuInput('lunch', 'veg')" id="btn-lunch-veg" class="border-2 border-transparent bg-slate-50 rounded-xl p-3 flex flex-col items-center gap-2 cursor-pointer hover:bg-green-50 transition-all select-none group relative overflow-hidden">
+                                         <span class="text-2xl group-hover:scale-110 transition-transform">🥗</span>
+                                         <span class="text-xs font-bold text-slate-600">Veg</span>
+                                         <div class="absolute top-2 right-2 w-4 h-4 rounded-full border border-slate-300 bg-white flex items-center justify-center transition-all" id="chk-lunch-veg"></div>
+                                     </div>
+                                     <div onclick="toggleMenuInput('lunch', 'nonveg')" id="btn-lunch-nonveg" class="border-2 border-transparent bg-slate-50 rounded-xl p-3 flex flex-col items-center gap-2 cursor-pointer hover:bg-red-50 transition-all select-none group relative overflow-hidden">
+                                         <span class="text-2xl group-hover:scale-110 transition-transform">🍗</span>
+                                         <span class="text-xs font-bold text-slate-600">Non-Veg</span>
+                                         <div class="absolute top-2 right-2 w-4 h-4 rounded-full border border-slate-300 bg-white flex items-center justify-center transition-all" id="chk-lunch-nonveg"></div>
+                                     </div>
+                                     <div onclick="toggleMenuInput('lunch', 'fast')" id="btn-lunch-fast" class="border-2 border-transparent bg-slate-50 rounded-xl p-3 flex flex-col items-center gap-2 cursor-pointer hover:bg-yellow-50 transition-all select-none group relative overflow-hidden">
+                                         <span class="text-2xl group-hover:scale-110 transition-transform">🍌</span>
+                                         <span class="text-xs font-bold text-slate-600">Fasting</span>
+                                         <div class="absolute top-2 right-2 w-4 h-4 rounded-full border border-slate-300 bg-white flex items-center justify-center transition-all" id="chk-lunch-fast"></div>
+                                     </div>
+                                     <div onclick="toggleMenuInput('lunch', 'off')" id="btn-lunch-off" class="border-2 border-transparent bg-slate-50 rounded-xl p-3 flex flex-col items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all select-none group relative overflow-hidden">
+                                        <span class="text-2xl group-hover:scale-110 transition-transform">⛔</span>
+                                        <span class="text-xs font-bold text-slate-600">Off/Closed</span>
+                                        <div class="absolute top-2 right-2 w-4 h-4 rounded-full border border-slate-300 bg-white flex items-center justify-center transition-all" id="chk-lunch-off"></div>
+                                    </div>
+                                 </div>
+                            </div>
+
+                            <div class="h-px bg-slate-100"></div>
+
+                            <!-- Dinner Section -->
+                            <div class="space-y-3">
+                                 <h4 class="font-bold text-slate-700 text-sm uppercase tracking-wide flex items-center gap-2">
+                                     <span class="text-lg">🌙</span> Dinner Options
+                                 </h4>
+                                 <div class="grid grid-cols-3 gap-3">
+                                     <div onclick="toggleMenuInput('dinner', 'veg')" id="btn-dinner-veg" class="border-2 border-transparent bg-slate-50 rounded-xl p-3 flex flex-col items-center gap-2 cursor-pointer hover:bg-green-50 transition-all select-none group relative overflow-hidden">
+                                         <span class="text-2xl group-hover:scale-110 transition-transform">🥗</span>
+                                         <span class="text-xs font-bold text-slate-600">Veg</span>
+                                         <div class="absolute top-2 right-2 w-4 h-4 rounded-full border border-slate-300 bg-white flex items-center justify-center transition-all" id="chk-dinner-veg"></div>
+                                     </div>
+                                     <div onclick="toggleMenuInput('dinner', 'nonveg')" id="btn-dinner-nonveg" class="border-2 border-transparent bg-slate-50 rounded-xl p-3 flex flex-col items-center gap-2 cursor-pointer hover:bg-red-50 transition-all select-none group relative overflow-hidden">
+                                         <span class="text-2xl group-hover:scale-110 transition-transform">🍗</span>
+                                         <span class="text-xs font-bold text-slate-600">Non-Veg</span>
+                                         <div class="absolute top-2 right-2 w-4 h-4 rounded-full border border-slate-300 bg-white flex items-center justify-center transition-all" id="chk-dinner-nonveg"></div>
+                                     </div>
+                                     <div onclick="toggleMenuInput('dinner', 'fast')" id="btn-dinner-fast" class="border-2 border-transparent bg-slate-50 rounded-xl p-3 flex flex-col items-center gap-2 cursor-pointer hover:bg-yellow-50 transition-all select-none group relative overflow-hidden">
+                                         <span class="text-2xl group-hover:scale-110 transition-transform">🍌</span>
+                                         <span class="text-xs font-bold text-slate-600">Fasting</span>
+                                         <div class="absolute top-2 right-2 w-4 h-4 rounded-full border border-slate-300 bg-white flex items-center justify-center transition-all" id="chk-dinner-fast"></div>
+                                     </div>
+                                      <div onclick="toggleMenuInput('dinner', 'off')" id="btn-dinner-off" class="border-2 border-transparent bg-slate-50 rounded-xl p-3 flex flex-col items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all select-none group relative overflow-hidden">
+                                        <span class="text-2xl group-hover:scale-110 transition-transform">⛔</span>
+                                        <span class="text-xs font-bold text-slate-600">Off/Closed</span>
+                                        <div class="absolute top-2 right-2 w-4 h-4 rounded-full border border-slate-300 bg-white flex items-center justify-center transition-all" id="chk-dinner-off"></div>
+                                    </div>
+                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal Footer -->
+                        <div class="p-4 border-t border-slate-100 bg-slate-50">
+                            <button onclick="saveDailyOverride()" class="w-full bg-orange-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-orange-200 hover:bg-orange-600 transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+                                <span>Save Preferences</span>
+                                <span class="text-orange-200">➔</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: MEMBERS LIST -->
+            <div id="tab-owner-members" class="mobile-tab-content hidden md:block bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden mt-6 md:mt-0">
+                <div class="px-6 py-4 border-b border-slate-100 bg-slate-50">
+                    <h3 class="font-bold text-slate-700">Member List</h3>
+                </div>
+                <div class="max-h-64 overflow-y-auto" id="member-list-container">
+                    <div class="p-4 text-center text-slate-400">Loading members...</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- MOBILE BOTTOM NAVIGATION -->
+        <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around p-2 z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pb-safe">
+            <!-- Stats (Default) -->
+            <button onclick="switchOwnerTab('stats')" id="nav-owner-stats" class="bottom-nav-button flex flex-col items-center justify-center w-full p-1 text-orange-600">
+                 <span class="text-xl">📊</span>
+                 <span class="text-[10px] font-bold mt-1">Stats</span>
+            </button>
+            <!-- Feed -->
+            <button onclick="switchOwnerTab('feed')" id="nav-owner-feed" class="bottom-nav-button flex flex-col items-center justify-center w-full p-1 text-slate-400 hover:text-orange-600">
+                 <span class="text-xl">🔴</span>
+                 <span class="text-[10px] font-bold mt-1">Feed</span>
+            </button>
+             <!-- Scan -->
+            <button onclick="startScanner()" class="flex flex-col items-center justify-center w-full p-1 text-slate-400 hover:text-orange-600">
+                 <span class="text-xl">📷</span>
+                 <span class="text-[10px] font-bold mt-1">Scan</span>
+            </button>
+            <!-- Menu (Tab) -->
+            <button onclick="switchOwnerTab('menu')" id="nav-owner-menu" class="bottom-nav-button flex flex-col items-center justify-center w-full p-1 text-slate-400 hover:text-orange-600">
+                 <span class="text-xl">📅</span>
+                 <span class="text-[10px] font-bold mt-1">Menu</span>
+            </button>
+            <!-- Members (Tab) -->
+            <button onclick="switchOwnerTab('members')" id="nav-owner-members" class="bottom-nav-button flex flex-col items-center justify-center w-full p-1 text-slate-400 hover:text-orange-600">
+                 <span class="text-xl">👥</span>
+                 <span class="text-[10px] font-bold mt-1">Members</span>
+            </button>
+        </div>
+    </main>
+
+    <!-- SCANNER MODAL -->
+    <div id="scanner-modal" class="fixed inset-0 bg-black/90 hidden z-50 flex items-center justify-center backdrop-blur-sm">
+      <div class="bg-white w-full max-w-sm mx-4 rounded-2xl overflow-hidden shadow-2xl relative">
+        <div class="bg-slate-50 p-4 border-b border-slate-100 flex justify-between items-center">
+          <h3 class="font-bold text-slate-800">📷 Scan QR Code</h3>
+          <button onclick="stopScanner()" class="text-slate-400 hover:text-red-500">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="relative bg-black h-96">
+          <div id="reader" class="w-full h-full"></div>
+          <div class="absolute inset-0 border-2 border-orange-500/50 m-12 rounded-lg pointer-events-none"></div>
+          <button onclick="switchCamera()" class="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-white/20 backdrop-blur-md border border-white/30 text-white px-4 py-2 rounded-full flex items-center gap-2 hover:bg-white/30 transition-all z-10">
+            <span>Flip Camera</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- WEEKLY SETTINGS MODAL REMOVED -->
+
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyDrIqCctANxbhpOEeiwI5EC2u5F0iKooIU",
+        authDomain: "messmateapplication.firebaseapp.com",
+        projectId: "messmateapplication",
+        storageBucket: "messmateapplication.firebasestorage.app",
+        messagingSenderId: "43914417393",
+        appId: "1:43914417393:web:6de0bda47db17bae3f0550",
+        measurementId: "G-C5SJGPQN98",
+      };
+      firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+    </script>
+    <script src="script.js?v=13"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+             if(Auth && Auth.initRouter) Auth.initRouter();
+        });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MessMate | Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="manifest" href="manifest.json" />
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script
+      src="https://unpkg.com/html5-qrcode"
+      type="text/javascript"
+    ></script>
+  </head>
+  <body class="text-slate-800 antialiased h-screen flex flex-col">
+    <div id="auth-view" class="flex-grow flex items-center justify-center p-4">
+      <div class="bg-white w-full max-w-md rounded-2xl shadow-xl border border-orange-100 overflow-hidden slide-up">
+        
+        <!-- HEADER -->
+        <div class="bg-orange-50 p-6 text-center border-b border-orange-100">
+          <div class="inline-flex items-center gap-2 mb-2">
+            <div class="bg-orange-500 text-white p-1.5 rounded-lg font-bold text-lg">MM</div>
+            <span class="font-bold text-2xl text-slate-800">Mess<span class="text-orange-500">Mate</span></span>
+          </div>
+          <p class="text-slate-500 text-sm">Canteen Management Simplified</p>
+        </div>
+
+        <!-- 1. LANDING / ROLE SELECTION -->
+        <div id="step-role-select" class="p-8 space-y-6">
+            <h2 class="text-xl font-bold text-slate-800 text-center">Who are you?</h2>
+            
+            <button onclick="startAuthFlow('member')" class="w-full group relative flex items-center p-4 border-2 border-slate-100 rounded-xl hover:border-orange-500 hover:bg-orange-50 transition-all">
+                <div class="bg-orange-100 text-orange-600 p-3 rounded-full mr-4 group-hover:bg-orange-200 transition-colors">
+                    👤
+                </div>
+                <div class="text-left">
+                    <h3 class="font-bold text-slate-800">Member</h3>
+                    <p class="text-xs text-slate-500">Find canteens & eat</p>
+                </div>
+                <div class="absolute right-4 text-slate-300 group-hover:text-orange-500">→</div>
+            </button>
+
+            <button onclick="startAuthFlow('owner')" class="w-full group relative flex items-center p-4 border-2 border-slate-100 rounded-xl hover:border-orange-500 hover:bg-orange-50 transition-all">
+                <div class="bg-blue-100 text-blue-600 p-3 rounded-full mr-4 group-hover:bg-blue-200 transition-colors">
+                    🏪
+                </div>
+                <div class="text-left">
+                    <h3 class="font-bold text-slate-800">Canteen Owner</h3>
+                    <p class="text-xs text-slate-500">Manage your business</p>
+                </div>
+                <div class="absolute right-4 text-slate-300 group-hover:text-orange-500">→</div>
+            </button>
+        </div>
+
+        <!-- 2. LOGIN (OTP) -->
+        <div id="step-login" class="hidden p-8 space-y-6 fade-in">
+            <div class="flex items-center gap-2 mb-4">
+                <button onclick="goBackToRoleSelect()" class="text-slate-400 hover:text-slate-600">← Back</button>
+                <h2 class="text-xl font-bold text-slate-800" id="login-title">Login</h2>
+            </div>
+
+            <div class="space-y-4">
+                <input type="email" id="login-email" class="input-field" placeholder="Email Address" required />
+                <input type="password" id="login-password" class="input-field" placeholder="Password" required />
+                
+                <p id="auth-error" class="hidden text-red-500 text-xs mt-1">Authentication failed</p>
+                
+                <button onclick="signInWithEmail()" id="btn-signin-email" class="w-full bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-slate-800 transition-colors">
+                    Sign In
+                </button>
+                <button onclick="signUpWithEmail()" id="btn-signup-email" class="w-full bg-white border border-slate-200 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-50 transition-colors">
+                    Sign Up
+                </button>
+
+                <div class="relative flex py-4 items-center">
+                    <div class="flex-grow border-t border-slate-200"></div>
+                    <span class="flex-shrink-0 mx-4 text-slate-400 text-sm">or</span>
+                    <div class="flex-grow border-t border-slate-200"></div>
+                </div>
+
+                <button onclick="signInWithGoogle()" class="w-full bg-white border border-slate-200 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        <path fill="none" d="M1 1h22v22H1z"/>
+                    </svg>
+                    Continue with Google
+                </button>
+            </div>
+        </div>
+
+        <!-- 3. MEMBER REGISTER -->
+        <div id="step-register-member" class="hidden p-8 space-y-4 fade-in">
+             <h2 class="text-xl font-bold text-slate-800">Member Profile</h2>
+             <form onsubmit="event.preventDefault(); completeMemberRegistration();" class="space-y-3">
+                <input type="text" id="reg-mem-name" class="input-field" placeholder="Full Name" required />
+                <input type="email" id="reg-mem-email" class="input-field" placeholder="Email Address" required />
+                <input type="text" id="reg-mem-occupation" class="input-field" placeholder="Occupation (e.g. Student)" required />
+                <input type="tel" id="reg-mem-whatsapp" class="input-field" placeholder="WhatsApp Number" pattern="[0-9]{10}" required />
+                <input type="text" id="reg-mem-location" class="input-field" placeholder="Current Location/Area" required />
+                
+                <div class="flex gap-4">
+                    <label class="flex-1 cursor-pointer">
+                        <input type="radio" name="mem-gender" value="Male" class="peer sr-only" required />
+                        <div class="text-center py-2 border rounded-lg peer-checked:bg-blue-50 peer-checked:border-blue-500 text-slate-600 peer-checked:text-blue-700 transition-all">Male</div>
+                    </label>
+                    <label class="flex-1 cursor-pointer">
+                        <input type="radio" name="mem-gender" value="Female" class="peer sr-only" />
+                        <div class="text-center py-2 border rounded-lg peer-checked:bg-pink-50 peer-checked:border-pink-500 text-slate-600 peer-checked:text-pink-700 transition-all">Female</div>
+                    </label>
+                </div>
+
+                <button type="submit" class="w-full bg-orange-500 text-white font-bold py-3 rounded-xl hover:bg-orange-600 transition-colors shadow-lg shadow-orange-200 mt-2">
+                    Complete Registration
+                </button>
+             </form>
+        </div>
+
+        <!-- 4. OWNER REGISTER -->
+        <div id="step-register-owner" class="hidden p-8 space-y-4 fade-in">
+            <h2 class="text-xl font-bold text-slate-800">Canteen Details</h2>
+            <form onsubmit="event.preventDefault(); completeOwnerRegistration();" class="space-y-3">
+               <input type="text" id="reg-own-canteen" class="input-field" placeholder="Canteen Name" required />
+               <input type="text" id="reg-own-name" class="input-field" placeholder="Owner Name" required />
+               <input type="email" id="reg-own-email" class="input-field" placeholder="Business Email" required />
+               
+               <div class="space-y-2">
+                   <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Location Details</p>
+                   <div class="grid grid-cols-2 gap-2">
+                       <input type="text" id="reg-own-area" class="input-field mb-0" placeholder="Area" required />
+                       <input type="text" id="reg-own-city" class="input-field mb-0" placeholder="City" required />
+                   </div>
+                   <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="reg-own-district" class="input-field mb-0" placeholder="District" required />
+                        <input type="text" id="reg-own-state" class="input-field mb-0" placeholder="State" required />
+                   </div>
+                   <input type="text" id="reg-own-pincode" class="input-field" placeholder="Pincode" pattern="[0-9]{6}" required />
+               </div>
+
+               <div class="space-y-2 pt-2 border-t border-slate-100">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Subscription</p>
+                    <div class="relative">
+                        <span class="absolute left-3 top-3 text-slate-500 font-bold">₹</span>
+                        <input type="number" id="reg-own-price" class="input-field pl-8" placeholder="Monthly Price" required />
+                    </div>
+               </div>
+
+               <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 mt-2">
+                   Register Business
+               </button>
+            </form>
+       </div>
+
+      </div>
+    </div>
+
+    <!-- APP VIEW MOVED TO SEPARATE FILES -->
+
+    <script>
+      // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+      const firebaseConfig = {
+        apiKey: "AIzaSyDrIqCctANxbhpOEeiwI5EC2u5F0iKooIU",
+        authDomain: "messmateapplication.firebaseapp.com",
+        projectId: "messmateapplication",
+        storageBucket: "messmateapplication.firebasestorage.app",
+        messagingSenderId: "43914417393",
+        appId: "1:43914417393:web:6de0bda47db17bae3f0550",
+        measurementId: "G-C5SJGPQN98",
+      };
+      // Initialize Firebase Global Variable
+      firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+    </script>
+
+    <script src="script.js"></script>
+  </body>
+</html>

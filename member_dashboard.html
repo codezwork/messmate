@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MessMate | Member Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="manifest" href="manifest.json" />
+  </head>
+  <body class="bg-white text-slate-800 antialiased min-h-screen flex flex-col">
+    <nav class="bg-white border-b border-orange-100 sticky top-0 z-50 shadow-sm p-4">
+      <div class="max-w-7xl mx-auto flex justify-between items-center">
+        <!-- New: Joined Mess Name Placeholder -->
+        <div class="flex flex-col">
+            <div class="font-bold text-lg md:text-2xl leading-none">
+                Mess<span class="text-orange-500">Mate</span>
+            </div>
+             <p id="nav-canteen-name" class="text-xs text-slate-400 font-medium mt-1">Not Joined</p>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <div class="text-right hidden sm:block">
+            <p id="user-display-name" class="text-sm font-bold">Loading...</p>
+            <p id="user-display-role" class="text-xs text-slate-500 uppercase">Member</p>
+          </div>
+          
+          <!-- Settings Dropdown Container -->
+          <div class="relative">
+              <button onclick="toggleSettings()" class="text-xl p-2 hover:bg-slate-50 rounded-full transition-colors rotate-0 hover:rotate-90 duration-300">⚙️</button>
+              <!-- Dropdown -->
+              <div id="settings-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 py-2 z-50">
+                  <div class="px-4 py-2 border-b border-slate-50 sm:hidden">
+                      <p id="mobile-user-name" class="font-bold text-sm text-slate-800">User</p>
+                      <p class="text-xs text-slate-500">Member</p>
+                  </div>
+                  <button onclick="installApp()" id="install-btn-member" class="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 font-medium border-b border-slate-50">Download App 📱</button>
+                  <button onclick="leaveMess()" class="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 font-medium">Leave Mess</button>
+                  <button onclick="logout()" class="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 font-medium">Log Out 🚪</button>
+              </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <main id="dashboard-content" class="flex-grow max-w-7xl mx-auto p-4 md:p-8 w-full">
+        <div class="fade-in space-y-6">
+            <!-- Removed Welcome Bar as requested -->
+
+            <!-- TAB: QR (Default) -->
+            <div id="tab-member-qr" class="mobile-tab-content block fade-in grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                 <!-- Scanner Box -->
+                 <div class="bg-white p-6 rounded-2xl shadow-lg border border-slate-100 flex flex-col items-center justify-center text-center h-full min-h-[400px]">
+                    <h3 class="font-bold text-xl text-slate-800 mb-4">My Access Code</h3>
+                    <div id="qrcode" class="p-4 bg-white border border-slate-100 rounded-xl shadow-sm mb-6 w-64 h-64 flex items-center justify-center"></div>
+                    <p class="text-sm text-slate-400 font-mono bg-slate-50 px-3 py-1 rounded-full" id="uid-display">...</p>
+                    <p class="text-xs text-slate-300 mt-4">Show this to the mess owner to scan.</p>
+                </div>
+
+                <!-- Desktop Sidebar (Hidden on Mobile QR Tab, visible on desktop) -->
+                <!-- We want Menu/Leave/Activity to be in their own tabs on mobile but visible on desktop -->
+                <!-- Strategy: Use md:block to show everything on desktop. On mobile, toggle visibility. -->
+                <!-- Actually, for layout simplicity, let's duplicate the logic or wrap them. -->
+                
+                <!-- On Desktop, we want a Grid. On Mobile, we want separate views. -->
+                <!-- Let's keep the grid but hide the right column on mobile if QR is active. -->
+            </div>
+
+            <!-- TAB: MENU & PREFERENCES -->
+            <div id="tab-member-menu" class="mobile-tab-content hidden md:block fade-in space-y-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="font-bold text-xl text-slate-800">📅 Menu & Preferences</h3>
+                        <div class="text-xs text-slate-400">Click to Change</div>
+                    </div>
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 id="calendar-month-year" class="font-bold text-lg text-slate-700">Month Year</h4>
+                        <div class="flex gap-2 text-xs">
+                            <span class="px-2 py-1 rounded bg-orange-100 text-orange-700">Lunch</span>
+                            <span class="px-2 py-1 rounded bg-blue-100 text-blue-700">Dinner</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-7 gap-2 text-center text-xs text-slate-400 font-bold mb-2">
+                        <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+                    </div>
+                    <div id="calendar-grid" class="grid grid-cols-7 gap-2"></div>
+                    
+                    <div class="mt-4 flex flex-wrap gap-2 text-xs text-slate-500 justify-center">
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 bg-green-500 rounded-full"></span> Veg</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 bg-red-500 rounded-full"></span> Non-Veg</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 bg-yellow-500 rounded-full"></span> Fast</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-slate-200 rounded-full"></span> Off</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: MARK LEAVE (Bulk) -->
+            <div id="tab-member-leave" class="mobile-tab-content hidden md:block fade-in space-y-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <h4 class="font-bold text-sm text-slate-700 mb-2">Mark Bulk Leave</h4>
+                    <p class="text-xs text-slate-400 mb-4">Select a range of dates to mark as "Off" (Both Lunch & Dinner).</p>
+                    <div class="flex flex-col gap-4">
+                        <div>
+                            <label class="text-xs font-bold text-slate-500">From</label>
+                            <input type="date" id="bulk-start" class="w-full text-sm p-3 border border-slate-200 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-500">To</label>
+                            <input type="date" id="bulk-end" class="w-full text-sm p-3 border border-slate-200 rounded-lg">
+                        </div>
+                    </div>
+                    <button onclick="saveBulkLeave()" class="mt-4 w-full bg-slate-800 text-white text-sm font-bold py-3 rounded-lg hover:bg-slate-700 shadow-md">Apply Leave (Off)</button>
+                </div>
+            </div>
+
+            <!-- TAB: RECENT ACTIVITY -->
+            <div id="tab-member-activity" class="mobile-tab-content hidden md:block fade-in space-y-6">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                        <h3 class="font-bold text-slate-700">Recent Activity</h3>
+                        <button onclick="
+                            const uid = localStorage.getItem('messmate_uid');
+                            if(uid) loadMemberHistory(uid);
+                        " class="text-xs text-orange-500 hover:text-orange-700">Refresh ⟳</button>
+                    </div>
+                    <div id="history-container" class="p-6">
+                        <p class="text-slate-400 text-sm text-center">Loading history...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MOBILE BOTTOM NAVIGATION -->
+            <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around p-2 z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pb-safe">
+                <!-- QR (Default) -->
+                <button onclick="switchMemberTab('qr')" id="nav-member-qr" class="flex flex-col items-center justify-center w-full p-1 text-orange-600">
+                     <span class="text-xl">📷</span>
+                     <span class="text-[10px] font-bold mt-1">QR Code</span>
+                </button>
+                <!-- Menu -->
+                <button onclick="switchMemberTab('menu')" id="nav-member-menu" class="flex flex-col items-center justify-center w-full p-1 text-slate-400 hover:text-orange-600">
+                     <span class="text-xl">📅</span>
+                     <span class="text-[10px] font-bold mt-1">Menu</span>
+                </button>
+                <!-- Leave -->
+                <button onclick="switchMemberTab('leave')" id="nav-member-leave" class="flex flex-col items-center justify-center w-full p-1 text-slate-400 hover:text-orange-600">
+                     <span class="text-xl">✈️</span>
+                     <span class="text-[10px] font-bold mt-1">Leave</span>
+                </button>
+                <!-- Activity -->
+                <button onclick="switchMemberTab('activity')" id="nav-member-activity" class="flex flex-col items-center justify-center w-full p-1 text-slate-400 hover:text-orange-600">
+                     <span class="text-xl">🕰️</span>
+                     <span class="text-[10px] font-bold mt-1">History</span>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- PREFERENCE MODAL -->
+    <!-- PREFERENCE MODAL: COMBINED LUNCH & DINNER -->
+    <div id="pref-modal" class="hidden fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm transform transition-all scale-100">
+            <h3 class="font-bold text-lg text-slate-800 mb-1">Set Preferences</h3>
+            <p id="pref-date-display" class="text-sm text-slate-500 mb-4">Date</p>
+
+            <div class="space-y-4">
+                <!-- Lunch Section -->
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase mb-2">Lunch</p>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button onclick="selectModalPref('lunch', 'Veg')" id="btn-lunch-Veg" class="pref-btn-lunch p-2 rounded border border-slate-200 text-xs font-bold hover:bg-slate-50">🥬</button>
+                        <button onclick="selectModalPref('lunch', 'NonVeg')" id="btn-lunch-NonVeg" class="pref-btn-lunch p-2 rounded border border-slate-200 text-xs font-bold hover:bg-slate-50">🍗</button>
+                        <button onclick="selectModalPref('lunch', 'Fast')" id="btn-lunch-Fast" class="pref-btn-lunch p-2 rounded border border-slate-200 text-xs font-bold hover:bg-slate-50">🍌</button>
+                        <button onclick="selectModalPref('lunch', 'Off')" id="btn-lunch-Off" class="pref-btn-lunch p-2 rounded border border-slate-200 text-xs font-bold hover:bg-slate-50">❌</button>
+                    </div>
+                </div>
+
+                <!-- Dinner Section -->
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase mb-2">Dinner</p>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button onclick="selectModalPref('dinner', 'Veg')" id="btn-dinner-Veg" class="pref-btn-dinner p-2 rounded border border-slate-200 text-xs font-bold hover:bg-slate-50">🥬</button>
+                        <button onclick="selectModalPref('dinner', 'NonVeg')" id="btn-dinner-NonVeg" class="pref-btn-dinner p-2 rounded border border-slate-200 text-xs font-bold hover:bg-slate-50">🍗</button>
+                        <button onclick="selectModalPref('dinner', 'Fast')" id="btn-dinner-Fast" class="pref-btn-dinner p-2 rounded border border-slate-200 text-xs font-bold hover:bg-slate-50">🍌</button>
+                        <button onclick="selectModalPref('dinner', 'Off')" id="btn-dinner-Off" class="pref-btn-dinner p-2 rounded border border-slate-200 text-xs font-bold hover:bg-slate-50">❌</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 flex gap-3">
+                <button onclick="closePrefModal()" class="flex-1 py-3 rounded-lg border border-slate-200 text-slate-500 font-bold hover:bg-slate-50">Cancel</button>
+                <button onclick="saveCombinedPreferences()" class="flex-1 py-3 rounded-lg bg-orange-600 text-white font-bold hover:bg-orange-700 shadow-lg shadow-orange-200">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyDrIqCctANxbhpOEeiwI5EC2u5F0iKooIU",
+        authDomain: "messmateapplication.firebaseapp.com",
+        projectId: "messmateapplication",
+        storageBucket: "messmateapplication.firebasestorage.app",
+        messagingSenderId: "43914417393",
+        appId: "1:43914417393:web:6de0bda47db17bae3f0550",
+        measurementId: "G-C5SJGPQN98",
+      };
+      firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+    </script>
+    <script src="script.js?v=13"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+             if(Auth && Auth.initRouter) Auth.initRouter();
+        });
+    </script>
+  </body>
+</html>
