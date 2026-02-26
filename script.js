@@ -416,7 +416,7 @@ function displayDiscoveryList(canteens) {
                         <span class="text-2xl font-bold text-slate-800">₹${c.subscriptionPrice || 'N/A'}</span>
                         <span class="text-xs text-slate-400">/month</span>
                     </div>
-                    <button onclick="joinMess('${c.uid}', '${c.canteenName}')" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-lg transition-colors">Join</button>
+                    <button onclick="joinMess('${c.uid}')" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-lg transition-colors">Join</button>
                 </div>
             </div>
         </div>
@@ -430,17 +430,33 @@ function filterDiscoveryList(query) {
     displayDiscoveryList(filtered);
 }
 
-function joinMess(ownerUid, canteenName) {
+function joinMess(ownerUid) {
     if(!ownerUid || ownerUid === 'undefined') {
         alert("System Error: Canteen ID is missing. Please refresh and try again.");
         return;
     }
-    if (!confirm(`Subscribe to ${canteenName}?`)) return;
+    
+    // Find the canteen data directly from memory instead of passing it through the HTML string
+    const canteen = window.allDiscoveryCanteens?.find(c => c.uid === ownerUid);
+    const canteenName = canteen?.canteenName || 'this canteen';
+    const price = canteen?.subscriptionPrice || 'N/A';
+    
     const user = Auth.state.user;
+    if (!user || !user.uid) {
+        alert("Session Error: We could not verify your account. Please log out and log back in, or do a Hard Refresh (Ctrl+Shift+R).");
+        return;
+    }
+    
+    if (!confirm(`Subscribe to ${canteenName} for ₹${price}/month?`)) return;
+    
     db.collection("users").doc(user.uid).update({ currentMessId: ownerUid, joinedDate: firebase.firestore.FieldValue.serverTimestamp() })
     .then(() => {
-        alert("Joined!");
+        alert("Successfully Joined!");
         location.reload(); // Will redirect to Dashboard
+    })
+    .catch((error) => {
+        console.error("Error joining mess:", error);
+        alert("Failed to join mess in Database. Error: " + error.message);
     });
 }
 
@@ -1946,33 +1962,8 @@ function showToast(msg) {
     }, 3000);
 }
 
-// --- SECURITY: Block Developer Tools ---
-document.addEventListener('contextmenu', function(e) {
-    e.preventDefault();
-});
-
-document.addEventListener('keydown', function(e) {
-    // Disable F12
-    if (e.keyCode === 123) {
-        e.preventDefault();
-    }
-    // Disable Ctrl+Shift+I (Windows) / Cmd+Opt+I (Mac)
-    if (e.ctrlKey && e.shiftKey && e.keyCode === 73) {
-        e.preventDefault();
-    }
-    // Disable Ctrl+Shift+J (Windows) / Cmd+Opt+J (Mac)
-    if (e.ctrlKey && e.shiftKey && e.keyCode === 74) {
-        e.preventDefault();
-    }
-    // Disable Ctrl+U (View Source)
-    if (e.ctrlKey && e.keyCode === 85) {
-        e.preventDefault();
-    }
-    // Disable Ctrl+Shift+C (Inspect Element)
-    if (e.ctrlKey && e.shiftKey && e.keyCode === 67) {
-        e.preventDefault();
-    }
-});
+// --- SECURITY: Block Developer Tools (REMOVED) ---
+// (Inspect Element blocking removed per user request for debugging)
 
 // --- PWA: Service Worker Registration & Installation ---
 let deferredPrompt;
